@@ -28,7 +28,6 @@ import javafx.stage.WindowEvent;
 
 public class TwoCompsAtalbott extends Application
 {
-	String[] messages;
 	Text aText;
 	Text[][] mark;
 	String myName; public String getMyName(){ return myName; }
@@ -53,6 +52,7 @@ public class TwoCompsAtalbott extends Application
 
 	boolean[][] hostShip;
 	boolean[][] clientShip;
+	boolean[][] shotsFired;
 	int shipCount;
 	int hitCount;
 	public static void main( String[] args )
@@ -76,8 +76,8 @@ public class TwoCompsAtalbott extends Application
 		mark = new Text[6][6];
 		hostShip = new boolean[6][6];
 		clientShip = new boolean[6][6];
+		shotsFired = new boolean[6][6];
 		startTurn = false;
-		messages = new String[10];
 		shipCount =0;
 		hitCount = 0;
 		setGameBoard();
@@ -139,6 +139,7 @@ public class TwoCompsAtalbott extends Application
 				mark[i][j] = t; t.setX(x+30); t.setY(y+50);
 				hostShip[i][j] =false;
 				clientShip[i][j] =false;
+				shotsFired[i][j] = false;
 				gamePane.getChildren().add(t);
 			}
 		}
@@ -169,7 +170,16 @@ public class TwoCompsAtalbott extends Application
 			{
 				if( myTurn )
 				{
-					if(mark[i][j].getText() == "X" || mark[i][j].getText() == "O" )
+//					if(!shotsFired[i][j])
+//					{
+//						shotsFired[i][j] = true;
+//					}
+//					if(mark[i][j].getText() == "X" || mark[i][j].getText() == "O" )
+//					{
+//						myTurn = true;
+//						System.out.println("Space is already taken try again");
+//					}
+					if(shotsFired[i][j])
 					{
 						myTurn = true;
 						System.out.println("Space is already taken try again");
@@ -183,12 +193,14 @@ public class TwoCompsAtalbott extends Application
 						{
 							endGame();
 						}
+						shotsFired[i][j] = true;
 						myTurn = false; 
 					}
 					else
 					{
 						marker( i, j, "O" );
 						send("play "+i+" "+j );
+						shotsFired[i][j] = true;
 						myTurn = false; 
 					}
 				}
@@ -211,7 +223,6 @@ public class TwoCompsAtalbott extends Application
 	}
 	public void setShip( int i, int j, String s )
 	{
-//		System.out.println(myName+" i="+i+" j="+j+" s="+s);
 		mark[i][j].setText(s);
 		hostShip[i][j] = true;
 		
@@ -370,10 +381,12 @@ public class TwoCompsAtalbott extends Application
 								if(hostShip[i][j] == true)
 								{
 									marker( i,j, "H" );
+									mark[i][j].setFill(Color.GREEN);
 								}
 								else
 								{
 									marker( i,j, "M" );
+									mark[i][j].setFill(Color.RED);
 								}
 								
 								myTurn = true;
