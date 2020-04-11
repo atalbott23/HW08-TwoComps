@@ -28,12 +28,13 @@ import javafx.stage.WindowEvent;
 
 public class TwoCompsAtalbott extends Application
 {
+	String[] messages;
 	Text aText;
 	Text[][] mark;
 	String myName; public String getMyName(){ return myName; }
 	String yourName;
 	boolean myTurn;
-	boolean firstTurn;
+	boolean startTurn;
 	VBox root; // the whole window
 	Scene scene;
 	Ear oe; // listens for what the other end says
@@ -49,15 +50,18 @@ public class TwoCompsAtalbott extends Application
 	TextField talker; // where user types a new thing to say
 
 	HBox controlPane; // has buttons to get started
-	
-	Text[][] ship;
+
+	boolean[][] hostShip;
+	boolean[][] clientShip;
+	int shipCount;
+	int hitCount;
 	public static void main( String[] args )
 	{ launch(args); }
 
 	public void start( Stage stage )
 	{
 		root = new VBox();
-		scene = new Scene(root, 725, 725);
+		scene = new Scene(root, 800, 800);
 		stage.setTitle("Battle Ship");
 		stage.setScene(scene);
 		stage.show();
@@ -70,56 +74,13 @@ public class TwoCompsAtalbott extends Application
 		root.getChildren().add( controlPane );
 
 		mark = new Text[6][6];
-		ship = new Text[6][6];
-		firstTurn = true;
-		Font font = Font.font("Verdana", FontWeight.EXTRA_BOLD, 25);
-		Rectangle bg = new Rectangle(0,20,625,625);
-		bg.setFill( Color.BLACK);
-		gamePane.getChildren().add(bg);
-		for (int i=0; i<6; i++ )
-		{
-			for ( int j=0; j<6; j++ )
-			{
-				double x = i*100+15;
-				double y = j*100+35;
-				Rectangle r = new Rectangle(x, y, 90, 90 );
-				r.setFill(Color.PINK);
-				gamePane.getChildren().add(r);
-				Text t = new Text(); t.setFont(font);
-				mark[i][j] = t; t.setX(x+30); t.setY(y+50);
-				gamePane.getChildren().add(t);
-			}
-		}
-		gamePane.addEventHandler
-		(  MouseEvent.MOUSE_CLICKED, 
-				(MouseEvent m)->
-		{               
-			int i = (int)((m.getX()-15)/100);
-			int j = (int)((m.getY()-35)/100);
-			System.out.println("click at x="+m.getX()+" y="+m.getY()
-			+" i="+i+" j="+j
-					);
-			if( myTurn )
-			{
-				if(mark[i][j].getText() == "X" || mark[i][j].getText() == "O")
-				{
-					myTurn = true;
-					System.out.println("Space is already taken try again");
-				}
-				else
-				{
-					marker( i, j, myName );
-					send("play "+i+" "+j );
-					myTurn = false; 
-				}
-			}
-		}
-				);
-
-		aText = new Text("wef");
-		aText.setX(650); aText.setY(650);
-		gamePane.getChildren().add(aText);
-
+		hostShip = new boolean[6][6];
+		clientShip = new boolean[6][6];
+		startTurn = false;
+		messages = new String[10];
+		shipCount =0;
+		hitCount = 0;
+		setGameBoard();
 
 		// host button
 		Button hostButton = new Button("Host");
@@ -159,6 +120,88 @@ public class TwoCompsAtalbott extends Application
 
 	}
 
+	public void setGameBoard() 
+	{
+		Font font = Font.font("Verdana", FontWeight.EXTRA_BOLD, 25);
+		Rectangle bg = new Rectangle(0,20,625,625);
+		bg.setFill( Color.BLACK);
+		gamePane.getChildren().add(bg);
+		for (int i=0; i<6; i++ )
+		{
+			for ( int j=0; j<6; j++ )
+			{
+				double x = i*100+15;
+				double y = j*100+35;
+				Rectangle r = new Rectangle(x, y, 90, 90 );
+				r.setFill(Color.PINK);
+				gamePane.getChildren().add(r);
+				Text t = new Text(); t.setFont(font);
+				mark[i][j] = t; t.setX(x+30); t.setY(y+50);
+				hostShip[i][j] =false;
+				clientShip[i][j] =false;
+				gamePane.getChildren().add(t);
+			}
+		}
+		gamePane.addEventHandler
+		(  MouseEvent.MOUSE_CLICKED, 
+				(MouseEvent m)->
+		{               
+			int i = (int)((m.getX()-15)/100);
+			int j = (int)((m.getY()-35)/100);
+			System.out.println("click at x="+m.getX()+" y="+m.getY()
+			+" i="+i+" j="+j
+					);
+			if(!startTurn)
+			{
+				if(hostShip[i][j] != true)
+				{
+					setShip(i,j,"S");
+					send("ship "+i+" "+j );
+					shipCount++;
+				}
+				if(shipCount == 4)
+				{
+					startTurn =true;
+				}
+				
+			}
+			else
+			{
+				if( myTurn )
+				{
+					if(mark[i][j].getText() == "X" || mark[i][j].getText() == "O" )
+					{
+						myTurn = true;
+						System.out.println("Space is already taken try again");
+					}
+					else if(clientShip[i][j] == true)
+					{
+						marker( i, j, "X" );
+						send("play "+i+" "+j );
+						hitCount++;
+						if(hitCount == 4)
+						{
+							endGame();
+						}
+						myTurn = false; 
+					}
+					else
+					{
+						marker( i, j, "O" );
+						send("play "+i+" "+j );
+						myTurn = false; 
+					}
+				}
+			}
+
+		}
+				);
+
+		aText = new Text("Welcome to Battle Ship, connect your game and set up your ships");
+		aText.setX(650); aText.setY(100);
+		gamePane.getChildren().add(aText);
+	}
+
 	// put s in square i,j 
 	public void marker( int i, int j, String s )
 	{
@@ -166,6 +209,30 @@ public class TwoCompsAtalbott extends Application
 		mark[i][j].setText(s);
 
 	}
+	public void setShip( int i, int j, String s )
+	{
+//		System.out.println(myName+" i="+i+" j="+j+" s="+s);
+		mark[i][j].setText(s);
+		hostShip[i][j] = true;
+		
+
+	}
+	
+	
+	public void endGame()
+	{
+		say("Game Over! The battle ship has been sunk!");
+		myTurn = false;
+	}
+	
+	public void setOpShip( int i, int j, String s )
+	{
+//		System.out.println(myName+" i="+i+" j="+j+" s="+s);
+		clientShip[i][j] = true;
+		
+
+	}
+
 
 	public class SetupHost extends Thread
 	{
@@ -175,8 +242,8 @@ public class TwoCompsAtalbott extends Application
 		@Override
 		public void run()
 		{
-			myName = "X";
-			yourName = "O";
+			myName = "Host";
+			yourName = "Challenger";
 			myTurn = true;
 			try
 			{
@@ -221,8 +288,8 @@ public class TwoCompsAtalbott extends Application
 	public void setupClient()
 	{
 		say("client setup: starting ...");
-		myName = "O";
-		yourName = "X";
+		myName = "Challenger";
+		yourName = "Host";
 		myTurn = false;
 		try
 		{
@@ -266,7 +333,7 @@ public class TwoCompsAtalbott extends Application
 		controlPane.getChildren().add(talker);
 		talker.setOnAction
 		( g-> { String s = talker.getText();
-		say( "me: " +s ); 
+		say( "(me): " +s ); 
 		send(s);
 		talker.setText(""); 
 		} 
@@ -287,7 +354,7 @@ public class TwoCompsAtalbott extends Application
 				try
 				{
 					String s = myIn.readLine(); // hangs for input
-					say( "you: "+ s );
+					say( "(you): "+ s );
 					if ( s.equals("byebyebye") ) { System.exit(0); }
 					else
 					{
@@ -300,8 +367,23 @@ public class TwoCompsAtalbott extends Application
 							{
 								int i = Integer.parseInt( st.nextToken());
 								int j = Integer.parseInt( st.nextToken());
+								if(hostShip[i][j] == true)
+								{
+									marker( i,j, "H" );
+								}
+								else
+								{
+									marker( i,j, "M" );
+								}
+								
+								myTurn = true;
+							}
+							else if(cmd.equals("ship"))
+							{
+								int i = Integer.parseInt( st.nextToken());
+								int j = Integer.parseInt( st.nextToken());
 								aText.setText("gotit");
-								marker( i,j, yourName );
+								setOpShip( i,j, "Ship" );
 								myTurn = true;
 							}
 						}
@@ -318,12 +400,9 @@ public class TwoCompsAtalbott extends Application
 	// add this string to the conversation.
 	public void say(String s) 
 	{
-		//theText += s + "\n";
-		//conversation.setText(theText);
 
-		System.out.println(myName+" says "+s); 
-
-		//gamePane.setVvalue(1.0); // todo: fix this
+		String prevMess = aText.getText();
+		aText.setText(prevMess + "\r\n"  +yourName+" says "+s);
 	}
 
 	// if the output is established, send s to it.
