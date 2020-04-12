@@ -50,11 +50,13 @@ public class TwoCompsAtalbott extends Application
 
 	HBox controlPane; // has buttons to get started
 
-	boolean[][] hostShip;
-	boolean[][] clientShip;
-	boolean[][] shotsFired;
-	int shipCount;
-	int hitCount;
+
+	boolean gameOver;
+	boolean[][] hostShip;//Tracks the current users ship location
+	boolean[][] clientShip;//Tracks the opponents ship
+	boolean[][] shotsFired;//Tracks all shots fired in the past
+	int shipCount;//Makes sure the ship is a size of four
+	int hitCount;//Counts the hit count to end the game
 	public static void main( String[] args )
 	{ launch(args); }
 
@@ -73,19 +75,19 @@ public class TwoCompsAtalbott extends Application
 		controlPane = new HBox();
 		root.getChildren().add( controlPane );
 
-		mark = new Text[6][6];
-		hostShip = new boolean[6][6];
-		clientShip = new boolean[6][6];
-		shotsFired = new boolean[6][6];
-		startTurn = false;
-		shipCount =0;
-		hitCount = 0;
-		setGameBoard();
+		mark = new Text[6][6];//initilizes the mark placements
+		hostShip = new boolean[6][6];//initilizes the host ship
+		clientShip = new boolean[6][6];//initilizes the opponents ships
+		shotsFired = new boolean[6][6];//initilizes the shots fired
+		startTurn = false; //Keeps track so the users can initialze the ships before shooting the first shot
+		shipCount =0; //Tracks the ship size
+		hitCount = 0;//Tracks the hits
+		gameOver=false;
+		setGameBoard();//Set up a game board functon to clean up code a bit
 
 		// host button
 		Button hostButton = new Button("Host");
 		controlPane.getChildren().add(hostButton);
-		//hostButton  .setOnAction( e->{ setup1(); });
 		hostButton.setOnAction
 		(e->{ startTHISend(); new SetupHost().start(); });
 
@@ -119,13 +121,14 @@ public class TwoCompsAtalbott extends Application
 				);
 
 	}
-
+	//Sets up the initial game board
 	public void setGameBoard() 
 	{
 		Font font = Font.font("Verdana", FontWeight.EXTRA_BOLD, 25);
-		Rectangle bg = new Rectangle(0,20,625,625);
+		Rectangle bg = new Rectangle(0,20,625,625);//Sets up the background
 		bg.setFill( Color.BLACK);
 		gamePane.getChildren().add(bg);
+		//Tells each array about where each block is on the board to prevent overuse of on click buttons and make more effiecnt
 		for (int i=0; i<6; i++ )
 		{
 			for ( int j=0; j<6; j++ )
@@ -152,56 +155,52 @@ public class TwoCompsAtalbott extends Application
 			System.out.println("click at x="+m.getX()+" y="+m.getY()
 			+" i="+i+" j="+j
 					);
-			if(!startTurn)
+			if(!gameOver)
 			{
-				if(hostShip[i][j] != true)
+				//Allows for the initial set up to not disturb the game play
+				if(!startTurn)
 				{
-					setShip(i,j,"S");
-					send("ship "+i+" "+j );
-					shipCount++;
-				}
-				if(shipCount == 4)
-				{
-					startTurn =true;
-				}
-				
-			}
-			else
-			{
-				if( myTurn )
-				{
-//					if(!shotsFired[i][j])
-//					{
-//						shotsFired[i][j] = true;
-//					}
-//					if(mark[i][j].getText() == "X" || mark[i][j].getText() == "O" )
-//					{
-//						myTurn = true;
-//						System.out.println("Space is already taken try again");
-//					}
-					if(shotsFired[i][j])
+					//To ensure a player doesnt mark the sam location twice
+					if(hostShip[i][j] != true)
 					{
-						myTurn = true;
-						System.out.println("Space is already taken try again");
+						setShip(i,j,"S");
+						send("ship "+i+" "+j );//Sends the cordinates to the opponents without reveling where they are.
+						shipCount++;
 					}
-					else if(clientShip[i][j] == true)
+					if(shipCount == 4)
 					{
-						marker( i, j, "X" );
-						send("play "+i+" "+j );
-						hitCount++;
-						if(hitCount == 4)
+						startTurn =true;//Starts the game when the ship is placed
+					}
+
+				}
+				else
+				{
+					if( myTurn )
+					{
+						if(shotsFired[i][j])//Ensures a spot thats been fired on is not fired on again
 						{
-							endGame();
+							myTurn = true;
+							System.out.println("Space is already taken try again");
 						}
-						shotsFired[i][j] = true;
-						myTurn = false; 
-					}
-					else
-					{
-						marker( i, j, "O" );
-						send("play "+i+" "+j );
-						shotsFired[i][j] = true;
-						myTurn = false; 
+						else if(clientShip[i][j] == true)
+						{
+							marker( i, j, "X" );//Mark it with hit if a ship is hit
+							send("play "+i+" "+j );//Tells the other player the ship was hit
+							hitCount++;//Incriments the hit count
+							if(hitCount == 4)
+							{
+								endGame();//Ends game when ship is sunk
+							}
+							shotsFired[i][j] = true;//Changes spot to fired upon
+							myTurn = false;//Ends turn 
+						}
+						else
+						{
+							marker( i, j, "O" );//Marks the spot as a miss
+							send("play "+i+" "+j );//Tells the other player it was a miss
+							shotsFired[i][j] = true;//Changes spot to fired upon
+							myTurn = false; //Ends the turn
+						}
 					}
 				}
 			}
@@ -209,7 +208,7 @@ public class TwoCompsAtalbott extends Application
 		}
 				);
 
-		aText = new Text("Welcome to Battle Ship, connect your game and set up your ships");
+		aText = new Text("Welcome to Battle Ship, connect your game and set up your ships");//Initializes the message board
 		aText.setX(650); aText.setY(100);
 		gamePane.getChildren().add(aText);
 	}
@@ -221,26 +220,27 @@ public class TwoCompsAtalbott extends Application
 		mark[i][j].setText(s);
 
 	}
+	//shows the user where their own ship is
 	public void setShip( int i, int j, String s )
 	{
 		mark[i][j].setText(s);
 		hostShip[i][j] = true;
-		
-
 	}
-	
-	
+
+	//Ends the game
 	public void endGame()
 	{
 		say("Game Over! The battle ship has been sunk!");
+		gameOver = true;
 		myTurn = false;
+		send("GameOver");
 	}
-	
+
 	public void setOpShip( int i, int j, String s )
 	{
-//		System.out.println(myName+" i="+i+" j="+j+" s="+s);
+		//		System.out.println(myName+" i="+i+" j="+j+" s="+s);
 		clientShip[i][j] = true;
-		
+
 
 	}
 
@@ -374,7 +374,7 @@ public class TwoCompsAtalbott extends Application
 							StringTokenizer st = new StringTokenizer(s);
 							String cmd = st.nextToken();
 							System.out.println("cmd="+cmd);
-							if ( cmd.equals("play") )
+							if ( cmd.equals("play") ) //Shows hits and misses
 							{
 								int i = Integer.parseInt( st.nextToken());
 								int j = Integer.parseInt( st.nextToken());
@@ -388,16 +388,20 @@ public class TwoCompsAtalbott extends Application
 									marker( i,j, "M" );
 									mark[i][j].setFill(Color.RED);
 								}
-								
+
 								myTurn = true;
 							}
-							else if(cmd.equals("ship"))
+							else if(cmd.equals("ship"))//Tells where the oppistes ship is
 							{
 								int i = Integer.parseInt( st.nextToken());
 								int j = Integer.parseInt( st.nextToken());
 								aText.setText("gotit");
 								setOpShip( i,j, "Ship" );
 								myTurn = true;
+							}
+							else if (cmd.equals("GameOver"))//Sends game over and ends game
+							{
+								gameOver = true;
 							}
 						}
 						catch(Exception k)
